@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "starters.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "starters.name" . }}
+    helm.sh/chart: {{ include "starters.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "starters.name" . }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "starters.name" . }}
+        app: {{ include "starters.fullname" . }}
+        stage: prod
+        managed-by: "Shivam_Pandey"
+      annotations:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.image.repoSecret}}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: https
+              containerPort: {{ .Values.containerPorts.https }}
+              protocol: TCP
+          {{- if .Values.livenessProbe }}
+          livenessProbe: # Checks if the application is running (for restarts)
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe }}
+          readinessProbe: # Checks if the application is ready to serve traffic (for routing)
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources: # Resource requests and limits for the container
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }} # Mounts for persistent volumes or config maps
+          {{- end }}
+          {{- with .Values.env }}
+          env: # Environment variables for the container
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }} # Definitions for volumes
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }} # Restricts which nodes your pods can be scheduled on
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }} # Advanced scheduling rules (e.g., co-locating pods)
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }} # Allows pods to be scheduled on tainted nodes
+      {{- end }}
